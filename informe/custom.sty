@@ -1,0 +1,120 @@
+%\usepackage[sfdefault]{FiraSans} %% option 'sfdefault' activates Fira Sans as the default text font
+%\usepackage[T1]{fontenc}
+%\renewcommand*\oldstylenums[1]{{\firaoldstyle #1}}
+
+\newcommand{\sectionnumberformat}[1]{%
+  \begin{minipage}{0.1\textwidth}
+      \bfseries\centering
+      \fontsize{18}{20}\sffamily\selectfont
+      \color{blue}\scalebox{1}[2]{#1}
+  \end{minipage}
+}
+
+\newcommand{\sectionformat}[1]{%
+  \begin{minipage}{0.8\textwidth}
+    \begin{mdframed}[
+      align = right,
+      backgroundcolor = section-background,
+      hidealllines = true,
+      innerleftmargin = 1em,
+      innertopmargin = 1em]
+      \fontsize{18}{20}\selectfont
+      \color{section-font}\scalebox{1}[2]{#1}
+    \end{mdframed}
+  \end{minipage}
+}
+
+% Formato de título de secciones:
+% El número celeste y grande, y un recuadro gris con el texto
+
+\titleformat%
+    {\section}% Aplico estilo sobre \section
+    {\sffamily}
+    {\sectionnumberformat{\thesection}}%
+    {0pt}% Espacio interlineado
+    {\sectionformat}
+
+% Formato de subtítulos
+\titleformat%
+    {\subsection}% Aplico estilo sobre \section
+    {\color{blue}\fontsize{16}{10}\selectfont}
+    {\thesubsection\hspace{1em}}%
+    {1em}% Espacio interlineado
+    {}
+
+
+\let\origfigure\figure
+\let\endorigfigure\endfigure
+\renewenvironment{figure}[1][2] {
+    \expandafter\origfigure\expandafter[H]
+} {
+    \endorigfigure
+}
+
+% Warning al incluir más de una imagen en la misma página
+\pdfsuppresswarningpagegroup=1
+\setlength{\emergencystretch}{3em}
+
+\captionsetup{font=footnotesize}
+% Code formatting macros from pandoc
+\usepackage{color}
+\usepackage{fancyvrb}
+\definecolor{code-block-line}{gray}{0.5}
+\definecolor{code-block-background}{gray}{0.95}
+\definecolor{section-background}{rgb}{200,200,255}
+\definecolor{section-number-background}{gray}{0.25}
+\definecolor{section-font}{gray}{0.5}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},fontsize=\small}
+% Added ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}
+{\begin{mdframed}[
+  linecolor=code-block-line,
+  backgroundcolor=code-block-background,
+  linewidth=0.5pt]}
+{\end{mdframed}}
+
+% Links del menú
+\hypersetup{
+    colorlinks,
+    linkcolor={red!50!black},
+    citecolor={blue!50!black},
+    urlcolor={blue!80!black}
+}
+
+
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.4,0.4,0.4}{\textit{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+
+%%% fixes pandoc %%%
+\providecommand{\tightlist}{} % utilizado por enumerados

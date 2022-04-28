@@ -1,0 +1,1 @@
+{"metric_id":"metric_1","date_range":["2022-04-24 21:18:00", "2022-04-24 21:18:30"],"aggregation":"Avg","window_secs":10.0}

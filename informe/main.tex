@@ -1,0 +1,45 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc} % Especifica la codificación de caracteres de los documentos.
+\usepackage[spanish]{babel} % Indica que el documento se escribirá en español.
+\usepackage{graphicx,grffile}
+\graphicspath{{build/img/}}
+
+\usepackage{anyfontsize}
+\usepackage{array}
+\usepackage{amssymb,amsmath} % utilizado por pandoc para renderizar formulas
+\usepackage{caption}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{mdframed}
+\usepackage{titlesec}
+\usepackage{todonotes}
+
+\usepackage{./custom}
+
+\begin{document}
+
+\begin{titlepage}
+	\centering
+	\vspace{1cm}
+	{\bfseries\LARGE Universidad de Buenos Aires \par}
+	{\scshape\Large Facultad de Ingeniería\par}
+	\vspace{3cm}
+	{\scshape\Large 75.74 Sistemas distribuidos\par}
+	\vspace{3cm}
+	{\scshape\Huge Trabajo práctico N° 1 \par}
+	{\scshape\Huge Metrics \&\& Alerts server \par}
+	\vfill
+	{\Large Autor: \par}
+	{\Large Matías Lafroce \par}
+	\vfill
+	{\Large 28 de abril 2022 \par}
+\end{titlepage}
+
+\tableofcontents
+
+\include{build/informe}
+
+\end{document}
