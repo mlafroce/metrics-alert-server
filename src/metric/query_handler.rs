@@ -3,11 +3,11 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::ops::Add;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 use chrono::{Date, DateTime, Duration, DurationRound, Utc};
 use log::{debug, info, warn};
 use threadpool::ThreadPool;
-use crate::metric::{Metric, MetricIterator, QueryParams};
+use crate::metric::{Metric, MetricIterator, Query, QueryParams};
 
 const TEMP_FILE_LIFETIME: i64 = 5;
 
@@ -16,7 +16,7 @@ pub struct QueryHandlerPool {
 }
 
 impl QueryHandlerPool {
-    pub fn new(receivers: Vec<Receiver<QueryParams>>) -> Self {
+    pub fn new(receivers: Vec<Receiver<Query>>) -> Self {
         let n_receivers = receivers.len();
         let pool = ThreadPool::new(n_receivers);
         for (id, receiver) in receivers.into_iter().enumerate() {
@@ -43,19 +43,20 @@ impl QueryHandler {
         Self { id, hash_modulus }
     }
 
-    pub fn run(&mut self, receiver: Receiver<QueryParams>) -> io::Result<()> {
+    pub fn run(&mut self, receiver: Receiver<Query>) -> io::Result<()> {
         loop {
             match receiver.recv() {
-                Ok(query) => {
+                Ok((query_params, result_sender)) => {
                     info!("Handling query");
-                    self.handle_query(query)?;
+                    let result = self.handle_query(query_params)?;
+                    result_sender.send(result).ok();
                 }
                 Err(_) => {warn!("Error while handling query!");}
             }
         }
     }
 
-    fn handle_query(&mut self, query: QueryParams) -> io::Result<()> {
+    fn handle_query(&mut self, query: QueryParams) -> io::Result<Option<f32>> {
         let mut hasher = DefaultHasher::new();
         query.metric_id.hash(&mut hasher);
         let hash = hasher.finish() as usize;
@@ -85,8 +86,7 @@ impl QueryHandler {
                 .flat_map(MetricIterator::new);
             query.process_metrics(metric_iterator)
         };
-        info!("Result: {:?}", result);
-        Ok(())
+        Ok(result)
     }
 }
 

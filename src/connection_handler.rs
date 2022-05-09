@@ -1,11 +1,11 @@
-use crate::metric::{Metric, MetricAction, QueryParams};
+use crate::metric::{Metric, MetricAction, Query, QueryParams};
 use log::{debug, error, info, warn};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::io::Write;
 use std::net::TcpStream;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::{Duration, Instant};
 use threadpool::ThreadPool;
 
@@ -15,11 +15,11 @@ const NUM_THREADS: usize = 4;
 pub struct ConnectionHandler {
     connection: TcpStream,
     metric_senders: Vec<Sender<Metric>>,
-    query_senders: Vec<Sender<QueryParams>>,
+    query_senders: Vec<Sender<Query>>,
 }
 
 impl ConnectionHandler {
-    pub fn run(connection_receiver: Receiver<TcpStream>, metric_senders: Vec<Sender<Metric>>, query_senders: Vec<Sender<QueryParams>>) {
+    pub fn run(connection_receiver: Receiver<TcpStream>, metric_senders: Vec<Sender<Metric>>, query_senders: Vec<Sender<Query>>) {
         info!("Starting pool with {:?} workers", NUM_THREADS);
         let pool = ThreadPool::new(NUM_THREADS);
         for connection in connection_receiver {
@@ -71,7 +71,14 @@ impl ConnectionHandler {
                 let hash = hasher.finish() as usize;
                 let idx = hash % self.metric_senders.len();
                 debug!("Querying {:?} in pipe {}", query_params, idx);
-                self.query_senders[idx].send(query_params).ok();
+                let (result_sender, result_recv) = channel();
+                let query = (query_params, result_sender);
+                self.query_senders[idx].send(query).ok();
+                if let Some(result) = result_recv.recv().unwrap() {
+                    write_con.write_all(format!("{{ result: 'ok', value: {} }}\n", result).as_bytes())?;
+                } else {
+                    write_con.write_all(format!("{{ result: 'not_found' }}\n").as_bytes())?;
+                }
             }
         }
         Ok(())

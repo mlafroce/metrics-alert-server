@@ -45,5 +45,11 @@ fn run_fake_client(metric_path: &str, host_addr: &str) -> io::Result<()> {
         std::thread::sleep(Duration::from_millis(rng.gen_range(0..100)));
         let metric_idx = rng.gen_range(0..metrics.len());
         metrics[metric_idx].write_to(&mut connection)?;
+        let reader = BufReader::new(connection);
+        if let Some(response) = reader.lines().flatten().next() {
+            println!("Server response: {}", response);
+        } else {
+            println!("Server didn't answer");
+        }
     }
 }

@@ -1,12 +1,14 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{TimestampSeconds, serde_as};
 use std::io;
 use std::io::{BufReader, Read, Write};
+use std::sync::mpsc::Sender;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use log::debug;
 
 pub mod metric_writer;
 pub mod query_handler;
+
+/// A query is a tuple with the query parameters and a sender (an address) to write the result
+pub type Query = (QueryParams, Sender<Option<f32>>);
 
 #[derive(Deserialize, Serialize)]
 pub enum MetricAction {
@@ -177,8 +179,8 @@ impl QueryParams {
                 }
             },
             // TODO: handle NaN values
-            QueryAggregation::Max => {values.max_by(|l, r| {l.partial_cmp(&r).unwrap()})},
-            QueryAggregation::Min => {values.min_by(|l, r| {l.partial_cmp(&r).unwrap()})},
+            QueryAggregation::Max => {values.max_by(|l, r| {l.partial_cmp(r).unwrap()})},
+            QueryAggregation::Min => {values.min_by(|l, r| {l.partial_cmp(r).unwrap()})},
             QueryAggregation::Count => { Some(values.count() as f32) },
         }
     }
