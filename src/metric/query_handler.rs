@@ -1,8 +1,13 @@
+use std::collections::hash_map::DefaultHasher;
+use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io;
+use std::ops::Add;
 use std::sync::mpsc::Receiver;
-use log::warn;
+use chrono::{Date, DateTime, Duration, DurationRound, Utc};
+use log::{debug, info, warn};
 use threadpool::ThreadPool;
-use crate::metric::QueryParams;
+use crate::metric::{Metric, MetricIterator, QueryParams};
 
 const TEMP_FILE_LIFETIME: i64 = 5;
 
@@ -12,10 +17,11 @@ pub struct QueryHandlerPool {
 
 impl QueryHandlerPool {
     pub fn new(receivers: Vec<Receiver<QueryParams>>) -> Self {
-        let pool = ThreadPool::new(receivers.len());
+        let n_receivers = receivers.len();
+        let pool = ThreadPool::new(n_receivers);
         for (id, receiver) in receivers.into_iter().enumerate() {
             pool.execute(move || {
-                let mut handler = QueryHandler::new(id);
+                let mut handler = QueryHandler::new(id, n_receivers);
                 handler.run(receiver).unwrap();
             });
         }
@@ -29,25 +35,73 @@ impl QueryHandlerPool {
 
 struct QueryHandler {
     id: usize,
+    hash_modulus: usize
 }
 
 impl QueryHandler {
-    pub fn new(id: usize) -> Self {
-        Self { id }
+    pub fn new(id: usize, hash_modulus: usize) -> Self {
+        Self { id, hash_modulus }
     }
 
     pub fn run(&mut self, receiver: Receiver<QueryParams>) -> io::Result<()> {
         loop {
             match receiver.recv() {
-                Ok(metric) => {
-                    self.handle_metric(metric)?;
+                Ok(query) => {
+                    info!("Handling query");
+                    self.handle_query(query)?;
                 }
-                Err(e) => {warn!("Error!");}
+                Err(_) => {warn!("Error while handling query!");}
             }
         }
     }
 
-    fn handle_metric(&mut self, metric: QueryParams) -> io::Result<()> {
+    fn handle_query(&mut self, query: QueryParams) -> io::Result<()> {
+        let mut hasher = DefaultHasher::new();
+        query.metric_id.hash(&mut hasher);
+        let hash = hasher.finish() as usize;
+        let metric_hash = hash % self.hash_modulus;
+        // TODO: Remove duplicated code
+        let result = if let Some((date_begin, date_end)) = query.date_range {
+            let date_iter = date_range_iterator(date_begin, date_end);
+            let metric_iterator = date_iter
+                .map(|date| {
+                    format!("metrics/{}_{:x}.metric.tmp", metric_hash, date.timestamp())
+                })
+                .flat_map(File::open)
+                .flat_map(MetricIterator::new);
+            query.process_metrics(metric_iterator)
+        } else {
+            let paths = std::fs::read_dir("metrics/").unwrap();
+            let metric_iterator= paths
+                .flatten()
+                .flat_map(|path|{
+                    path.file_name().into_string()
+                })
+                .filter(|path| {
+                    let metric_hash_str = format!("{}", metric_hash);
+                    path.starts_with(&metric_hash_str)
+                })
+                .flat_map(File::open)
+                .flat_map(MetricIterator::new);
+            query.process_metrics(metric_iterator)
+        };
+        info!("Result: {:?}", result);
         Ok(())
     }
+}
+
+fn date_range_iterator(date_begin: DateTime<Utc>, date_end: DateTime<Utc>) -> impl Iterator<Item=DateTime<Utc>> {
+    let mut current_time_slice = date_begin.duration_trunc(Duration::seconds(TEMP_FILE_LIFETIME))
+        .unwrap();
+    let end = date_end.duration_trunc(Duration::seconds(TEMP_FILE_LIFETIME))
+        .unwrap();
+    std::iter::from_fn(move || {
+        if current_time_slice <= end {
+            let res = current_time_slice;
+            current_time_slice = current_time_slice.add(Duration::seconds(TEMP_FILE_LIFETIME));
+            Some(res)
+        } else {
+            None
+        }
+    })
 }

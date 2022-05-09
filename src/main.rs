@@ -5,6 +5,7 @@ use log::info;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
+use crate::metric::query_handler::QueryHandlerPool;
 
 mod connection_handler;
 mod load_balancer;
@@ -24,7 +25,7 @@ fn main() {
     env_logger::init();
     info!("Listening on :{}", port);
     let mut acceptor = LoadBalancer::new("0.0.0.0:12345", connection_sender).unwrap();
-    acceptor.start(term_flag.clone()).unwrap();
+    acceptor.start(term_flag).unwrap();
 
     let mut metric_senders = Vec::with_capacity(METRIC_WRITER_POOL_SIZE);
     let mut metric_receivers = Vec::with_capacity(METRIC_WRITER_POOL_SIZE);
@@ -43,7 +44,7 @@ fn main() {
     }
 
     let metric_writer_pool = MetricWriterPool::new(metric_receivers);
-    let metric_writer_pool = QueryHandlerPool::new(query_receivers);
+    let query_writer_pool = QueryHandlerPool::new(query_receivers);
     ConnectionHandler::run(connection_receiver, metric_senders, query_senders);
 
     acceptor.stop();

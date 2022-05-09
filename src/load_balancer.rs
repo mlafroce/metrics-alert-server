@@ -1,4 +1,4 @@
-use log::warn;
+use log::{error, warn};
 use std::io;
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -32,7 +32,7 @@ impl LoadBalancer {
         if let Some(listener) = self.listener.take() {
             if let Some(connection_sender) = self.connection_sender.take() {
                 let handle = std::thread::spawn(move || {
-                    LoadBalancer::run(listener, connection_sender, term_flag);
+                    LoadBalancer::run(listener, connection_sender, term_flag).ok();
                 });
                 self.handle = Some(handle);
             }
@@ -42,7 +42,9 @@ impl LoadBalancer {
 
     pub fn stop(&mut self) {
         if let Some(handle) = self.handle.take() {
-            handle.join();
+            if let Err(e) = handle.join() {
+                error!("Error while joining thread: {:?}", e);
+            }
         }
     }
 
@@ -51,11 +53,10 @@ impl LoadBalancer {
         connection_sender: Sender<TcpStream>,
         term_flag: Arc<AtomicBool>,
     ) -> io::Result<()> {
-        listener.set_nonblocking(true);
+        listener.set_nonblocking(true)?;
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    // TODO: Handle
                     connection_sender.send(stream).ok();
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
