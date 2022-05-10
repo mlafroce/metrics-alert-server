@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
+envconfig = "0.10.0"
 env_logger = "0.9.0"
 log = "0.4"
 rand = "0.8"

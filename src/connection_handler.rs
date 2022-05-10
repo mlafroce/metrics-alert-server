@@ -1,4 +1,4 @@
-use crate::metric::{Metric, MetricAction, Query, QueryParams};
+use crate::metric::{Metric, MetricAction, Query};
 use log::{debug, error, info, warn};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -19,7 +19,11 @@ pub struct ConnectionHandler {
 }
 
 impl ConnectionHandler {
-    pub fn run(connection_receiver: Receiver<TcpStream>, metric_senders: Vec<Sender<Metric>>, query_senders: Vec<Sender<Query>>) {
+    pub fn run(
+        connection_receiver: Receiver<TcpStream>,
+        metric_senders: Vec<Sender<Metric>>,
+        query_senders: Vec<Sender<Query>>,
+    ) {
         info!("Starting pool with {:?} workers", NUM_THREADS);
         let pool = ThreadPool::new(NUM_THREADS);
         for connection in connection_receiver {
@@ -65,7 +69,7 @@ impl ConnectionHandler {
                 debug!("Inserting {:?} into pipe {}", metric, idx);
                 self.metric_senders[idx].send(metric).ok();
                 write_con.write_all("OK".as_bytes())?;
-            },
+            }
             MetricAction::Query(query_params) => {
                 query_params.metric_id.hash(&mut hasher);
                 let hash = hasher.finish() as usize;
@@ -75,9 +79,10 @@ impl ConnectionHandler {
                 let query = (query_params, result_sender);
                 self.query_senders[idx].send(query).ok();
                 if let Some(result) = result_recv.recv().unwrap() {
-                    write_con.write_all(format!("{{ result: 'ok', value: {} }}\n", result).as_bytes())?;
+                    write_con
+                        .write_all(format!("{{ result: 'ok', value: {} }}\n", result).as_bytes())?;
                 } else {
-                    write_con.write_all(format!("{{ result: 'not_found' }}\n").as_bytes())?;
+                    write_con.write_all("{ result: 'not_found' }\n".as_bytes())?;
                 }
             }
         }

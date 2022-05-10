@@ -1,8 +1,8 @@
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::io;
 use std::io::{BufReader, Read, Write};
 use std::sync::mpsc::Sender;
-use chrono::{DateTime, NaiveDateTime, Utc};
 
 pub mod metric_writer;
 pub mod query_handler;
@@ -13,7 +13,7 @@ pub type Query = (QueryParams, Sender<Option<f32>>);
 #[derive(Deserialize, Serialize)]
 pub enum MetricAction {
     Insert(Metric),
-    Query(QueryParams)
+    Query(QueryParams),
 }
 
 impl MetricAction {
@@ -23,7 +23,7 @@ impl MetricAction {
         match action_code[0] {
             b'I' => Ok(MetricAction::Insert(Metric::from_stream(&mut stream)?)),
             b'Q' => Ok(MetricAction::Query(QueryParams::from_stream(&mut stream)?)),
-            _ => Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid code"))
+            _ => Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid code")),
         }
     }
 
@@ -70,12 +70,12 @@ impl Metric {
 }
 
 pub struct MetricIterator<R: Read> {
-    source: R
+    source: R,
 }
 
 impl<R: Read> MetricIterator<R> {
     pub fn new(source: R) -> Self {
-        Self {source}
+        Self { source }
     }
 }
 
@@ -90,15 +90,19 @@ impl<R: Read> Iterator for MetricIterator<R> {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct QueryParams {
     pub metric_id: String,
+    #[serde(default)]
     #[serde(deserialize_with = "date_deserializer")]
     pub date_range: Option<(DateTime<Utc>, DateTime<Utc>)>,
     pub aggregation: QueryAggregation,
-    pub window_secs: f32
+    pub window_secs: f32,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum QueryAggregation {
-    Avg, Min, Max, Count
+    Avg,
+    Min,
+    Max,
+    Count,
 }
 
 impl QueryParams {
@@ -133,12 +137,22 @@ impl QueryParams {
             b'm' => QueryAggregation::Min,
             b'M' => QueryAggregation::Max,
             b'c' => QueryAggregation::Count,
-            _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid aggregation"))
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Invalid aggregation",
+                ))
+            }
         };
 
         reader.read_exact(&mut size_buf)?;
         let window_secs = f32::from_be_bytes(size_buf);
-        Ok(Self { metric_id, date_range, aggregation, window_secs })
+        Ok(Self {
+            metric_id,
+            date_range,
+            aggregation,
+            window_secs,
+        })
     }
 
     pub fn write_to<W: Write>(&self, stream: &mut W) -> io::Result<()> {
@@ -162,7 +176,8 @@ impl QueryParams {
         Ok(())
     }
 
-    fn process_metrics(&self, metrics: impl Iterator<Item=Metric>) -> Option<f32> {
+    fn process_metrics(&self, metrics: impl Iterator<Item = Metric>) -> Option<f32> {
+        println!("Processing metrics...");
         let values = metrics.map(|metric| metric.value);
         match self.aggregation {
             QueryAggregation::Avg => {
@@ -177,23 +192,32 @@ impl QueryParams {
                 } else {
                     None
                 }
-            },
+            }
             // TODO: handle NaN values
-            QueryAggregation::Max => {values.max_by(|l, r| {l.partial_cmp(r).unwrap()})},
-            QueryAggregation::Min => {values.min_by(|l, r| {l.partial_cmp(r).unwrap()})},
-            QueryAggregation::Count => { Some(values.count() as f32) },
+            QueryAggregation::Max => values.max_by(|l, r| l.partial_cmp(r).unwrap()),
+            QueryAggregation::Min => values.min_by(|l, r| l.partial_cmp(r).unwrap()),
+            QueryAggregation::Count => Some(values.count() as f32),
         }
     }
 }
 
-fn date_deserializer<'de, D>(deserializer: D) -> Result<Option<(DateTime<Utc>, DateTime<Utc>)>, D::Error>
-    where
-        D: Deserializer<'de>,
+fn date_deserializer<'de, D>(
+    deserializer: D,
+) -> Result<Option<(DateTime<Utc>, DateTime<Utc>)>, D::Error>
+where
+    D: Deserializer<'de>,
 {
-    let (from_str, to_str): (&str, &str) = Deserialize::deserialize(deserializer)?;
-    // do better hex decoding than this
-    let from_naive = NaiveDateTime::parse_from_str(from_str, "%Y-%m-%d %H:%M:%S").unwrap();
-    let to_naive = NaiveDateTime::parse_from_str(to_str, "%Y-%m-%d %H:%M:%S").unwrap();
-    let range = (DateTime::from_utc(from_naive, Utc), DateTime::from_utc(to_naive, Utc));
-    Ok(Some(range))
+    println!("Deserializing!");
+    if let Ok((from_str, to_str)) = Deserialize::deserialize(deserializer) {
+        let from_naive = NaiveDateTime::parse_from_str(from_str, "%Y-%m-%d %H:%M:%S").unwrap();
+        let to_naive = NaiveDateTime::parse_from_str(to_str, "%Y-%m-%d %H:%M:%S").unwrap();
+        let range = (
+            DateTime::from_utc(from_naive, Utc),
+            DateTime::from_utc(to_naive, Utc),
+        );
+        Ok(Some(range))
+    } else {
+        Ok(None)
+    }
+
 }

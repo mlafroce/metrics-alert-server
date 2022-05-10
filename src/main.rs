@@ -1,11 +1,11 @@
 use crate::connection_handler::ConnectionHandler;
 use crate::load_balancer::LoadBalancer;
 use crate::metric::metric_writer::MetricWriterPool;
+use crate::metric::query_handler::QueryHandlerPool;
 use log::info;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
-use crate::metric::query_handler::QueryHandlerPool;
 
 mod connection_handler;
 mod load_balancer;

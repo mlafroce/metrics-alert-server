@@ -19,7 +19,7 @@ fn run_queries(metric_path: &str, host_addr: &str) -> io::Result<()> {
         .lines()
         .flatten()
         .flat_map(|line| serde_json::from_str::<QueryParams>(&line))
-        .map(|params| { MetricAction::Query(params) });
+        .map(MetricAction::Query);
 
     let mut rng = rand::thread_rng();
 

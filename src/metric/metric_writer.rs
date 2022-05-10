@@ -41,7 +41,7 @@ impl MetricWriter {
         let trunc_time = time
             .duration_trunc(Duration::seconds(TEMP_FILE_LIFETIME))
             .unwrap();
-        let path = format!("metrics/{}.metric.tmp", id);
+        let path = format!("metrics/writer/{}.metric.tmp", id);
         let current_file = File::create(path)?;
         Ok(Self {
             id,
@@ -63,11 +63,12 @@ impl MetricWriter {
                 Ok(metric) => {
                     self.handle_metric(metric)?;
                 }
-                Err(e) => {warn!("Error!");}
+                Err(e) => {
+                    warn!("Error!");
+                }
             }
             self.check_file_swap()?;
         }
-        Ok(())
     }
 
     fn handle_metric(&mut self, metric: Metric) -> io::Result<()> {
@@ -82,8 +83,12 @@ impl MetricWriter {
             .duration_trunc(Duration::seconds(TEMP_FILE_LIFETIME))
             .unwrap();
         if self.current_time_slice != trunc_time {
-            let old_path = format!("metrics/{}.metric.tmp", self.id);
-            let new_path = format!("metrics/{}_{:x}.metric.tmp", self.id, self.current_time_slice.timestamp());
+            let old_path = format!("metrics/writer/{}.metric.tmp", self.id);
+            let new_path = format!(
+                "metrics/{}_{:x}.metric.tmp",
+                self.id,
+                self.current_time_slice.timestamp()
+            );
             std::fs::rename(&old_path, &new_path)?;
             self.current_file = File::create(old_path)?;
             self.current_time_slice = trunc_time;
