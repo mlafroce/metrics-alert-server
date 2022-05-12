@@ -1,12 +1,12 @@
 use crate::metric::{MetricIterator, Query, QueryParams};
 use chrono::{DateTime, Duration, DurationRound, Utc};
-use log::{debug, info, warn};
+use log::{info, warn};
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::ops::Add;
-use std::sync::mpsc::{Receiver};
+use std::sync::mpsc::Receiver;
 use threadpool::ThreadPool;
 
 const TEMP_FILE_LIFETIME: i64 = 5;
@@ -19,9 +19,9 @@ impl QueryHandlerPool {
     pub fn new(receivers: Vec<Receiver<Query>>) -> Self {
         let n_receivers = receivers.len();
         let pool = ThreadPool::new(n_receivers);
-        for (id, receiver) in receivers.into_iter().enumerate() {
+        for receiver in receivers.into_iter() {
             pool.execute(move || {
-                let mut handler = QueryHandler::new(id, n_receivers);
+                let mut handler = QueryHandler::new(n_receivers);
                 handler.run(receiver).unwrap();
             });
         }
@@ -34,13 +34,12 @@ impl QueryHandlerPool {
 }
 
 struct QueryHandler {
-    id: usize,
     hash_modulus: usize,
 }
 
 impl QueryHandler {
-    pub fn new(id: usize, hash_modulus: usize) -> Self {
-        Self { id, hash_modulus }
+    pub fn new(hash_modulus: usize) -> Self {
+        Self { hash_modulus }
     }
 
     pub fn run(&mut self, receiver: Receiver<Query>) -> io::Result<()> {
@@ -52,7 +51,8 @@ impl QueryHandler {
                     result_sender.send(result).ok();
                 }
                 Err(_) => {
-                    warn!("Error while handling query!");
+                    warn!("Error while handling query! Are we shutting down?");
+                    return Ok(());
                 }
             }
         }

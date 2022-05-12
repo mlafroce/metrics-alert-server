@@ -1,4 +1,5 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
+use log::debug;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::io;
 use std::io::{BufReader, Read, Write};
@@ -9,6 +10,7 @@ pub mod query_handler;
 
 /// A query is a tuple with the query parameters and a sender (an address) to write the result
 pub type Query = (QueryParams, Sender<Option<f32>>);
+pub type DateRange = (DateTime<Utc>, DateTime<Utc>);
 
 #[derive(Deserialize, Serialize)]
 pub enum MetricAction {
@@ -177,7 +179,7 @@ impl QueryParams {
     }
 
     fn process_metrics(&self, metrics: impl Iterator<Item = Metric>) -> Option<f32> {
-        println!("Processing metrics...");
+        debug!("Processing metrics...");
         let values = metrics.map(|metric| metric.value);
         match self.aggregation {
             QueryAggregation::Avg => {
@@ -201,9 +203,7 @@ impl QueryParams {
     }
 }
 
-fn date_deserializer<'de, D>(
-    deserializer: D,
-) -> Result<Option<(DateTime<Utc>, DateTime<Utc>)>, D::Error>
+fn date_deserializer<'de, D>(deserializer: D) -> Result<Option<DateRange>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -219,5 +219,4 @@ where
     } else {
         Ok(None)
     }
-
 }

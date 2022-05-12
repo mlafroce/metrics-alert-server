@@ -3,7 +3,7 @@ use chrono::{DateTime, Duration, DurationRound, Utc};
 use log::{debug, warn};
 use std::fs::File;
 use std::io;
-use std::sync::mpsc::{Receiver, RecvTimeoutError};
+use std::sync::mpsc::Receiver;
 use threadpool::ThreadPool;
 
 const TEMP_FILE_LIFETIME: i64 = 5;
@@ -52,22 +52,16 @@ impl MetricWriter {
 
     pub fn run(&mut self, receiver: Receiver<Metric>) -> io::Result<()> {
         loop {
-            /*match receiver.recv_timeout(std::time::Duration::from_secs(TEMP_FILE_LIFETIME as u64)) {
-                Ok(metric) => {
-                    self.handle_metric(metric)?;
-                },
-                Err(RecvTimeoutError::Timeout) => {}
-                Err(RecvTimeoutError::Disconnected) => break,
-            }*/
+            self.check_file_swap()?;
             match receiver.recv() {
                 Ok(metric) => {
                     self.handle_metric(metric)?;
                 }
-                Err(e) => {
-                    warn!("Error!");
+                Err(_) => {
+                    warn!("Error while receiving metric! Are we shutting down?");
+                    return Ok(());
                 }
             }
-            self.check_file_swap()?;
         }
     }
 
