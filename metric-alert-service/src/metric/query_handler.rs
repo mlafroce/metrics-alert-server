@@ -16,12 +16,13 @@ pub struct QueryHandlerPool {
 }
 
 impl QueryHandlerPool {
-    pub fn new(receivers: Vec<Receiver<Query>>) -> Self {
+    pub fn new(receivers: Vec<Receiver<Query>>, metrics_root: String) -> Self {
         let n_receivers = receivers.len();
         let pool = ThreadPool::new(n_receivers);
         for receiver in receivers.into_iter() {
+            let root_clone = metrics_root.clone();
             pool.execute(move || {
-                let mut handler = QueryHandler::new(n_receivers);
+                let mut handler = QueryHandler::new(n_receivers, root_clone);
                 handler.run(receiver).unwrap();
             });
         }
@@ -35,11 +36,12 @@ impl QueryHandlerPool {
 
 struct QueryHandler {
     hash_modulus: usize,
+    metrics_root: String
 }
 
 impl QueryHandler {
-    pub fn new(hash_modulus: usize) -> Self {
-        Self { hash_modulus }
+    pub fn new(hash_modulus: usize, metrics_root: String) -> Self {
+        Self { hash_modulus, metrics_root }
     }
 
     pub fn run(&mut self, receiver: Receiver<Query>) -> io::Result<()> {
@@ -67,12 +69,12 @@ impl QueryHandler {
         let result = if let Some((date_begin, date_end)) = query.date_range {
             let date_iter = date_range_iterator(date_begin, date_end);
             let metric_iterator = date_iter
-                .map(|date| format!("metrics/{}_{:x}.metric.tmp", metric_hash, date.timestamp()))
+                .map(|date| format!("{}/{}_{:x}.metric.tmp", self.metrics_root, metric_hash, date.timestamp()))
                 .flat_map(File::open)
                 .flat_map(MetricIterator::new);
             query.process_metrics(metric_iterator)
         } else {
-            let paths = std::fs::read_dir("metrics/").unwrap();
+            let paths = std::fs::read_dir(&self.metrics_root).unwrap();
             let metric_iterator = paths
                 .flatten()
                 .flat_map(|path| path.file_name().into_string())
@@ -80,7 +82,7 @@ impl QueryHandler {
                     let metric_hash_str = format!("{}", metric_hash);
                     path.starts_with(&metric_hash_str)
                 })
-                .map(|path| format!("metrics/{}", path))
+                .map(|path| format!("{}/{}", self.metrics_root, path))
                 .flat_map(File::open)
                 .flat_map(MetricIterator::new);
             query.process_metrics(metric_iterator)

@@ -1,0 +1,40 @@
+version: '3'
+services:
+  server:
+    build:
+      context: .
+      dockerfile: docker/server.Dockerfile
+    container_name: server
+    image: server:latest
+    environment:
+      - SERVER_PORT=12345
+      - LOGGING_LEVEL=DEBUG
+      - METRICS_ROOT=/var/metrics
+    networks:
+      - tp1_net
+    volumes:
+      - /var/metrics
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
+    container_name: client
+    image: client:latest
+    environment:
+      - SERVER_PORT=12345
+      - LOGGING_LEVEL=DEBUG
+      - SERVER_HOST=server
+    networks:
+      - tp1_net
+    volumes:
+      - ${PWD}/test-data/actions.txt:/actions.txt
+    depends_on:
+      - server
+
+networks:
+  tp1_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.26.125.0/24

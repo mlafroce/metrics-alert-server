@@ -13,11 +13,12 @@ pub struct MetricWriterPool {
 }
 
 impl MetricWriterPool {
-    pub fn new(receivers: Vec<Receiver<Metric>>) -> Self {
+    pub fn new(receivers: Vec<Receiver<Metric>>, metrics_root: String) -> Self {
         let pool = ThreadPool::new(receivers.len());
         for (id, receiver) in receivers.into_iter().enumerate() {
+            let root_clone = metrics_root.clone();
             pool.execute(move || {
-                let mut handler = MetricWriter::new(id).unwrap();
+                let mut handler = MetricWriter::new(id, root_clone).unwrap();
                 handler.run(receiver).unwrap();
             });
         }
@@ -31,20 +32,22 @@ impl MetricWriterPool {
 
 struct MetricWriter {
     id: usize,
+    metrics_root: String,
     current_time_slice: DateTime<Utc>,
     current_file: File,
 }
 
 impl MetricWriter {
-    pub fn new(id: usize) -> io::Result<Self> {
+    pub fn new(id: usize, metrics_root: String) -> io::Result<Self> {
         let time = chrono::Utc::now();
         let trunc_time = time
             .duration_trunc(Duration::seconds(TEMP_FILE_LIFETIME))
             .unwrap();
-        let path = format!("metrics/writer/{}.metric.tmp", id);
+        let path = format!("{}/writer/{}.metric.tmp", metrics_root,id);
         let current_file = File::create(path)?;
         Ok(Self {
             id,
+            metrics_root,
             current_time_slice: trunc_time,
             current_file,
         })
@@ -77,9 +80,10 @@ impl MetricWriter {
             .duration_trunc(Duration::seconds(TEMP_FILE_LIFETIME))
             .unwrap();
         if self.current_time_slice != trunc_time {
-            let old_path = format!("metrics/writer/{}.metric.tmp", self.id);
+            let old_path = format!("{}/writer/{}.metric.tmp", self.metrics_root, self.id);
             let new_path = format!(
-                "metrics/{}_{:x}.metric.tmp",
+                "{}/{}_{:x}.metric.tmp",
+                self.metrics_root,
                 self.id,
                 self.current_time_slice.timestamp()
             );

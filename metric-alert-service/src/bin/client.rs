@@ -90,6 +90,7 @@ fn run_client(config: Config) -> io::Result<()> {
 }
 
 fn do_request(host_addr: &String, action: &MetricAction) -> io::Result<()> {
+    info!("Connecting to {}", host_addr);
     let mut connection = TcpStream::connect(host_addr)?;
     action.write_to(&mut connection)?;
     let reader = BufReader::new(connection);

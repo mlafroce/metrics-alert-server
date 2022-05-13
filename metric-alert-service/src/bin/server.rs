@@ -19,6 +19,9 @@ struct Config {
     /// server port
     #[envconfig(from = "SERVER_PORT", default = "12345")]
     server_port: String,
+    /// Folder with stored metriccs
+    #[envconfig(from = "METRICS_ROOT", default = "metrics")]
+    metrics_root: String,
 }
 
 fn main() {
@@ -26,6 +29,9 @@ fn main() {
     println!("Setting logger level: {}", env_config.logging_level);
     std::env::set_var("RUST_LOG", env_config.logging_level.clone());
     env_logger::init();
+    info!("Creating metric folder if it doesn't exists...");
+    let writer_path = format!("{}/writer", env_config.metrics_root);
+    std::fs::create_dir_all(writer_path).unwrap();
     run_server(env_config).unwrap();
 }
 
@@ -57,8 +63,10 @@ fn run_server(config: Config) -> io::Result<()> {
         query_receivers.push(receiver);
     }
 
-    let mut metric_writer_pool = MetricWriterPool::new(metric_receivers);
-    let mut query_writer_pool = QueryHandlerPool::new(query_receivers);
+    let metrics_root = config.metrics_root;
+
+    let mut metric_writer_pool = MetricWriterPool::new(metric_receivers, metrics_root.clone());
+    let mut query_writer_pool = QueryHandlerPool::new(query_receivers, metrics_root);
     ConnectionHandler::run(connection_receiver, metric_senders, query_senders);
 
     acceptor.stop();
