@@ -3,7 +3,7 @@ use chrono::{DateTime, Duration, DurationRound, Utc};
 use log::{debug, warn};
 use std::fs::File;
 use std::io;
-use std::sync::mpsc::Receiver;
+use crossbeam_channel::{Receiver, RecvTimeoutError};
 use threadpool::ThreadPool;
 
 const TEMP_FILE_LIFETIME: i64 = 5;
@@ -53,14 +53,15 @@ impl MetricWriter {
         })
     }
 
-    pub fn run(&mut self, receiver: Receiver<Metric>) -> io::Result<()> {
+    pub fn run(&mut self, receiver: crossbeam_channel::Receiver<Metric>) -> io::Result<()> {
         loop {
             self.check_file_swap()?;
-            match receiver.recv() {
+            match receiver.recv_timeout(std::time::Duration::from_secs(5)) {
                 Ok(metric) => {
                     self.handle_metric(metric)?;
                 }
-                Err(_) => {
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => {
                     warn!("Error while receiving metric! Are we shutting down?");
                     return Ok(());
                 }
@@ -68,7 +69,8 @@ impl MetricWriter {
         }
     }
 
-    fn handle_metric(&mut self, metric: Metric) -> io::Result<()> {
+    fn handle_metric(&mut self, mut metric: Metric) -> io::Result<()> {
+        metric.timestamp = Some(chrono::Utc::now());
         debug!("Writing metric {:?}", metric);
         metric.write_to(&mut self.current_file)?;
         Ok(())

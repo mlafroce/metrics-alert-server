@@ -6,7 +6,7 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::ops::Add;
-use std::sync::mpsc::Receiver;
+use crossbeam_channel::Receiver;
 use threadpool::ThreadPool;
 
 const TEMP_FILE_LIFETIME: i64 = 5;
@@ -60,7 +60,7 @@ impl QueryHandler {
         }
     }
 
-    fn handle_query(&mut self, query: QueryParams) -> io::Result<Option<f32>> {
+    fn handle_query(&mut self, query: QueryParams) -> io::Result<Vec<f32>> {
         let mut hasher = DefaultHasher::new();
         query.metric_id.hash(&mut hasher);
         let hash = hasher.finish() as usize;

@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::io;
 use std::io::Write;
 use std::net::TcpStream;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use crossbeam_channel::{unbounded as channel, Receiver, Sender};
 use std::time::{Duration, Instant};
 use threadpool::ThreadPool;
 
@@ -73,17 +73,13 @@ impl ConnectionHandler {
             MetricAction::Query(query_params) => {
                 query_params.metric_id.hash(&mut hasher);
                 let hash = hasher.finish() as usize;
-                let idx = hash % self.metric_senders.len();
+                let idx = hash % self.query_senders.len();
                 debug!("Querying {:?} in pipe {}", query_params, idx);
                 let (result_sender, result_recv) = channel();
                 let query = (query_params, result_sender);
                 self.query_senders[idx].send(query).ok();
-                if let Some(result) = result_recv.recv().unwrap() {
-                    write_con
-                        .write_all(format!("{{ result: 'ok', value: {} }}\n", result).as_bytes())?;
-                } else {
-                    write_con.write_all("{ result: 'not_found' }\n".as_bytes())?;
-                }
+                let result = result_recv.recv().unwrap();
+                write_con.write_all(format!("{{ result: 'ok', value: {:?} }}\n", result).as_bytes())?;
             }
         }
         Ok(())
