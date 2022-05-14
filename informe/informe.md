@@ -13,7 +13,7 @@
 
 ## Descripción de los componentes
 
-![Diagrama de robustez](robustez.png){width=80%}
+![Diagrama de robustez](robustez.pdf){width=80%}
 
 Ambas aplicaciones cliente se conectan a un load balancer que distribuye las conexiones entre los distintos hilos manejadores del servidor. El load balancer actual envía sockets a un pool de threads. Este balancer será reemplazado por un load balancer (como `haproxy`) que me permita repartir las conexiones entre procesos independientes.
 
@@ -93,6 +93,10 @@ En caso negativo, el byte enviado es 'N'
 * Entero float de 32 bits como ventana de tiempo.
 
 
-## Despliegue
+## Casos de uso
 
-//TODO
+### Envío de metricas
+
+![Diagrama de actividades de envio de metricas](actividades-1.pdf){width=80%}
+
+![Diagrama de actividades de consulta de metricas](actividades-2.pdf){width=80%}

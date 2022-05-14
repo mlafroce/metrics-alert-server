@@ -7,13 +7,14 @@ services:
     container_name: server
     image: server:latest
     environment:
-      - SERVER_PORT=12345
       - LOGGING_LEVEL=DEBUG
+      - SERVER_PORT=12345
       - METRICS_ROOT=/var/metrics
     networks:
       - tp1_net
     volumes:
       - /var/metrics
+      - ${PWD}/test-data/alarms.json:/alarms.json
 
   client:
     build:
@@ -22,8 +23,8 @@ services:
     container_name: client
     image: client:latest
     environment:
-      - SERVER_PORT=12345
       - LOGGING_LEVEL=DEBUG
+      - SERVER_PORT=12345
       - SERVER_HOST=server
     networks:
       - tp1_net

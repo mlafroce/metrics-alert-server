@@ -1,0 +1,2 @@
+{"metric_id":"metric_1","aggregation":"Avg","window_secs":10.0, "limit": 3.0}
+{"metric_id":"metric_2","aggregation":"Avg","window_secs":10.0, "limit": 3.0}
